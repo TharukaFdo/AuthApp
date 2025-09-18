@@ -35,10 +35,20 @@ const userSchema = new mongoose.Schema({
   
   // PASSWORD FIELD
   password: {
-    type: String,                    // Data type must be text/string  
+    type: String,                    // Data type must be text/string
     required: [true, 'Password is required'],     // Field is mandatory
     minlength: [6, 'Password must be at least 6 characters long'] // Minimum length for security
     // Note: We'll hash this password before saving to database for security
+  },
+
+  // ROLE FIELD - defines user permissions and access levels
+  role: {
+    type: String,                    // Data type must be text/string
+    enum: ['user', 'admin', 'moderator'], // Only these values are allowed
+    default: 'user',                 // New users get 'user' role by default
+    required: [true, 'Role is required'] // Field is mandatory
+    // Role hierarchy: user < moderator < admin
+    // user: basic access, moderator: can moderate content, admin: full system access
   }
 }, {
   // SCHEMA OPTIONS

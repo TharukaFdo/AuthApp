@@ -77,7 +77,73 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
+// ========================================
+// ROLE-BASED AUTHORIZATION MIDDLEWARE
+// ========================================
+// Higher-order function that creates middleware for specific role requirements
+// This allows us to create different middleware for different role levels
+
+// ROLE AUTHORIZATION FUNCTION
+// Takes an array of allowed roles and returns a middleware function
+// Usage: authorize(['admin', 'moderator']) - only admin and moderator can access
+const authorize = (roles = []) => {
+  // Return the actual middleware function
+  // This function will be called for each request to protected routes
+  return (req, res, next) => {
+    try {
+      // CHECK IF USER IS AUTHENTICATED
+      // req.user is set by authenticateToken middleware (must run first)
+      if (!req.user) {
+        return res.status(401).json({
+          message: 'Authentication required'
+        });
+      }
+
+      // CHECK IF USER HAS REQUIRED ROLE
+      // roles array contains allowed roles for this route
+      // req.user.role contains the current user's role
+      if (roles.length && !roles.includes(req.user.role)) {
+        return res.status(403).json({
+          message: `Access denied. Required role: ${roles.join(' or ')}`
+        });
+      }
+
+      // USER HAS REQUIRED PERMISSIONS
+      // Continue to the actual route handler
+      next();
+
+    } catch (error) {
+      // ERROR HANDLING
+      res.status(500).json({
+        message: 'Authorization error',
+        error: error.message
+      });
+    }
+  };
+};
+
+// SPECIFIC ROLE MIDDLEWARE FUNCTIONS
+// Pre-configured middleware for common use cases
+
+// ADMIN ONLY ACCESS
+// Only users with 'admin' role can access
+const requireAdmin = authorize(['admin']);
+
+// MODERATOR OR ADMIN ACCESS
+// Users with 'moderator' or 'admin' role can access
+const requireModerator = authorize(['moderator', 'admin']);
+
+// ANY AUTHENTICATED USER ACCESS
+// Any logged-in user can access (regardless of role)
+const requireAuth = authorize([]);
+
 // EXPORT MIDDLEWARE FUNCTIONS
 // Export as object so we can add more middleware functions later
-// Usage: const { authenticateToken } = require('./middleware/auth')
-module.exports = { authenticateToken };
+// Usage: const { authenticateToken, authorize, requireAdmin } = require('./middleware/auth')
+module.exports = {
+  authenticateToken,
+  authorize,
+  requireAdmin,
+  requireModerator,
+  requireAuth
+};

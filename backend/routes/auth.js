@@ -30,9 +30,9 @@ const generateToken = (userId) => {
 router.post('/register', async (req, res) => {
   try {
     // EXTRACT DATA FROM REQUEST BODY
-    // Destructuring: extracts username, email, password from req.body object
+    // Destructuring: extracts username, email, password, role from req.body object
     // req.body contains the JSON data sent by the frontend
-    const { username, email, password } = req.body;
+    const { username, email, password, role } = req.body;
 
     // INPUT VALIDATION
     // Check if all required fields are provided
@@ -57,10 +57,25 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // VALIDATE ROLE IF PROVIDED
+    // If role is provided, validate it against allowed values
+    const validRoles = ['user', 'admin', 'moderator'];
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({
+        message: 'Invalid role. Allowed roles are: user, admin, moderator'
+      });
+    }
+
     // CREATE NEW USER
     // Create new User instance with provided data
     // Password will be automatically hashed by the User model's pre-save middleware
-    const user = new User({ username, email, password });
+    // Role defaults to 'user' if not provided (as defined in User model)
+    const user = new User({
+      username,
+      email,
+      password,
+      role: role || 'user' // Use provided role or default to 'user'
+    });
     
     // Save user to database
     // await pauses execution until database operation completes
@@ -79,7 +94,8 @@ router.post('/register', async (req, res) => {
       user: {   // User data (excluding sensitive password)
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        role: user.role // Include role in response
       }
     });
     
@@ -149,7 +165,8 @@ router.post('/login', async (req, res) => {
       user: {   // User data (excluding password)
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        role: user.role // Include role in login response
       }
     });
     

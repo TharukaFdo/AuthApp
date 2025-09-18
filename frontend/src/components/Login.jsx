@@ -115,86 +115,234 @@ const Login = ({ onLogin, switchToRegister }) => {
   };
 
   // ========================================
-  // COMPONENT RENDER (USER INTERFACE)
+  // COMPONENT RENDER WITH ENHANCED UI
   // ========================================
-  // JSX = JavaScript XML - lets us write HTML-like syntax in JavaScript
-  // Everything inside return() becomes the visual interface
-
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
-      {/* PAGE TITLE */}
-      <h2>Login</h2>
-      
-      {/* CONDITIONAL ERROR DISPLAY */}
-      {/* {error && ...} = only show error div if error exists */}
-      {/* && = logical AND operator for conditional rendering */}
-      {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-      
-      {/* LOGIN FORM */}
-      {/* onSubmit={handleSubmit} = when form submitted, call our handleSubmit function */}
-      <form onSubmit={handleSubmit}>
-        
-        {/* EMAIL INPUT FIELD */}
-        <div style={{ marginBottom: '15px' }}>
-          <label>Email:</label>
-          <input
-            type="email"              // HTML5 email validation
-            name="email"              // Identifies this field (used in handleChange)
-            value={formData.email}    // Controlled component - React controls the value
-            onChange={handleChange}   // Function to call when user types
-            required                  // HTML5 required validation
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: '#f8f9fa',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      padding: '20px',
+      margin: 0,
+      boxSizing: 'border-box'
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '400px',
+        backgroundColor: 'white',
+        padding: '40px',
+        borderRadius: '8px',
+        border: '1px solid #e9ecef',
+        boxSizing: 'border-box'
+      }}>
+
+        {/* HEADER */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <h2 style={{
+            margin: '0 0 8px 0',
+            fontSize: '28px',
+            fontWeight: '600',
+            color: '#212529'
+          }}>
+            Welcome Back
+          </h2>
+          <p style={{
+            margin: 0,
+            color: '#6c757d',
+            fontSize: '16px'
+          }}>
+            Sign in to your account
+          </p>
         </div>
-        
-        {/* PASSWORD INPUT FIELD */}
-        <div style={{ marginBottom: '15px' }}>
-          <label>Password:</label>
-          <input
-            type="password"           // Hides password text with dots
-            name="password"           // Identifies this field
-            value={formData.password} // Controlled component
-            onChange={handleChange}   // Function to call when user types
-            required                  // HTML5 required validation
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
+
+        {/* ERROR DISPLAY */}
+        {error && (
+          <div style={{
+            backgroundColor: '#f8d7da',
+            border: '1px solid #f5c6cb',
+            color: '#721c24',
+            padding: '12px 16px',
+            borderRadius: '6px',
+            marginBottom: '24px',
+            fontSize: '14px'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* LOGIN FORM */}
+        <form onSubmit={handleSubmit}>
+
+          {/* EMAIL FIELD */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#495057',
+              marginBottom: '8px'
+            }}>
+              Email Address
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '1px solid #ced4da',
+                borderRadius: '6px',
+                fontSize: '16px',
+                backgroundColor: '#ffffff',
+                color: '#212529',
+                outline: 'none',
+                transition: 'border-color 0.15s ease',
+                boxSizing: 'border-box'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#6c757d';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#ced4da';
+              }}
+              placeholder="Enter your email"
+            />
+          </div>
+
+          {/* PASSWORD FIELD */}
+          <div style={{ marginBottom: '32px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#495057',
+              marginBottom: '8px'
+            }}>
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '1px solid #ced4da',
+                borderRadius: '6px',
+                fontSize: '16px',
+                backgroundColor: '#ffffff',
+                color: '#212529',
+                outline: 'none',
+                transition: 'border-color 0.15s ease',
+                boxSizing: 'border-box'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#6c757d';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#ced4da';
+              }}
+              placeholder="Enter your password"
+            />
+          </div>
+
+          {/* SUBMIT BUTTON */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '14px 24px',
+              backgroundColor: loading ? '#6c757d' : '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background-color 0.15s ease'
+            }}
+            onMouseOver={(e) => {
+              if (!loading) {
+                e.target.style.backgroundColor = '#5a6268';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!loading) {
+                e.target.style.backgroundColor = '#6c757d';
+              }
+            }}
+          >
+            {loading ? (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid transparent',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+                Signing in...
+              </span>
+            ) : (
+              'Sign In'
+            )}
+          </button>
+        </form>
+
+        {/* SWITCH TO REGISTER */}
+        <div style={{
+          textAlign: 'center',
+          marginTop: '32px',
+          padding: '24px 0',
+          borderTop: '1px solid #e2e8f0'
+        }}>
+          <p style={{
+            margin: '0 0 16px 0',
+            color: '#64748b',
+            fontSize: '14px'
+          }}>
+            Don't have an account?
+          </p>
+          <button
+            onClick={switchToRegister}
+            style={{
+              background: 'none',
+              border: '1px solid #6c757d',
+              color: '#6c757d',
+              padding: '8px 24px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#6c757d';
+              e.target.style.color = 'white';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+              e.target.style.color = '#6c757d';
+            }}
+          >
+            Create Account
+          </button>
         </div>
-        
-        {/* SUBMIT BUTTON */}
-        <button 
-          type="submit"               // Makes this button submit the form
-          disabled={loading}          // Disable button while login is in progress
-          style={{ 
-            width: '100%', 
-            padding: '10px', 
-            backgroundColor: '#007bff', 
-            color: 'white', 
-            border: 'none', 
-            cursor: 'pointer' 
-          }}
-        >
-          {/* CONDITIONAL BUTTON TEXT */}
-          {/* Show different text based on loading state */}
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-      
-      {/* SWITCH TO REGISTER LINK */}
-      <p style={{ textAlign: 'center', marginTop: '20px' }}>
-        Don't have an account?{' '}
-        {/* BUTTON TO SWITCH TO REGISTRATION FORM */}
-        <button 
-          onClick={switchToRegister}  // Call function passed from parent
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: '#007bff', 
-            cursor: 'pointer' 
-          }}
-        >
-          Register here
-        </button>
-      </p>
+      </div>
     </div>
   );
 };
