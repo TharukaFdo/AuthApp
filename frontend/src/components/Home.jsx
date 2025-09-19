@@ -1,234 +1,129 @@
-// ========================================
-// HOME COMPONENT - Protected Dashboard Page
-// ========================================
-// This React component shows the main dashboard after user login
-// It demonstrates: protected content, authenticated API calls, and automatic logout
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useKeycloak } from '../context/KeycloakContext.jsx';
 
-// IMPORT REACT HOOKS AND LIBRARIES
-import { useState, useEffect } from 'react'; // useState + useEffect hooks
-import axios from 'axios';                    // HTTP client for API requests
+const Home = () => {
+  const { userProfile, userRoles, authenticated, logout, getToken, hasRole, hasAnyRole } = useKeycloak();
 
-// ========================================
-// MAIN HOME COMPONENT
-// ========================================
-const Home = ({ user, onLogout }) => {
-  // PROPS EXPLANATION:
-  // user: basic user info passed from App.jsx (from localStorage)
-  // onLogout: function to call when user logs out (updates App.jsx state)
-
-  // ========================================
-  // COMPONENT STATE MANAGEMENT
-  // ========================================
-  
-  // PROFILE STATE - stores detailed user data fetched from server
-  // Initially null, will be populated after API call
-  const [profile, setProfile] = useState(null);
-
-  // LOADING STATE - tracks if we're fetching profile data
-  // Initially true because we start loading immediately
-  const [loading, setLoading] = useState(true);
-
-  // ERROR STATE - stores error messages for user feedback
-  const [error, setError] = useState('');
-
-  // ROLE-BASED DATA STATES
-  const [permissions, setPermissions] = useState([]);
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const getPermissionsFromRoles = (roles) => {
+    const permissions = [];
 
-  // ========================================
-  // USEEFFECT HOOK - COMPONENT LIFECYCLE
-  // ========================================
-  // useEffect runs after component mounts (appears on screen)
-  // It's like saying "when this component loads, do something"
-  useEffect(() => {
-    fetchProfile(); // Fetch user profile data when component loads
-    fetchPermissions(); // Fetch user permissions
-  }, []); // Empty dependency array [] = run only once when component mounts
+    // If no custom roles, assume basic user permissions
+    if (!roles || roles.length === 0) {
+      permissions.push('read profile', 'update own profile');
+    }
 
-  // ========================================
-  // AUTHENTICATED API REQUEST FUNCTION
-  // ========================================
-  const fetchProfile = async () => {
+    if (roles.includes('user')) {
+      permissions.push('read profile', 'update own profile');
+    }
+
+    if (roles.includes('moderator')) {
+      permissions.push('view stats', 'moderate content', 'view user list');
+    }
+
+    if (roles.includes('admin')) {
+      permissions.push('manage users', 'delete users', 'system config', 'view admin panel');
+    }
+
+    return permissions;
+  };
+
+  const hasBackendRole = (rolesToCheck) => {
+    const rolesArray = Array.isArray(rolesToCheck) ? rolesToCheck : [rolesToCheck];
+    return rolesArray.some(role => userRoles.includes(role));
+  };
+
+  // API functions
+  const refreshAllData = async () => {
     try {
-      // GET JWT TOKEN FROM BROWSER STORAGE
-      // This token was saved during login/registration
-      const token = localStorage.getItem('token');
-      
-      // MAKE AUTHENTICATED API REQUEST
-      // This demonstrates how to call protected endpoints
-      const response = await axios.get('http://localhost:5000/api/user/profile', {
-        headers: {
-          // AUTHORIZATION HEADER
-          // Format: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          // This tells the server who we are and that we're logged in
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      // SUCCESS - save profile data to state
-      setProfile(response.data.user);
-      
+      await fetchUsers();
+      await fetchStats();
     } catch (error) {
-      // HANDLE API ERRORS
-      setError('Failed to fetch profile data');
-      
-      // AUTOMATIC LOGOUT ON AUTHENTICATION FAILURE
-      // If server returns 401 (Unauthorized), it means token is invalid
-      // This could happen if: token expired, token corrupted, user deleted
-      if (error.response?.status === 401) {
-        handleLogout(); // Automatically log user out
-      }
-    } finally {
-      // CLEANUP - runs whether API call succeeded or failed
-      setLoading(false); // Stop showing loading spinner
+      console.error('❌ Failed to refresh data:', error);
     }
   };
 
-  // ========================================
-  // ADDITIONAL API FUNCTIONS FOR ROLE-BASED FEATURES
-  // ========================================
-
-  // FETCH USER PERMISSIONS
-  const fetchPermissions = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/user/permissions', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setPermissions(response.data.permissions);
-    } catch (error) {
-      console.error('Failed to fetch permissions:', error);
-    }
-  };
-
-  // FETCH ALL USERS (ADMIN ONLY)
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
+      if (!token) return;
+
       const response = await axios.get('http://localhost:5000/api/user/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setUsers(response.data.users);
     } catch (error) {
-      setError('Failed to fetch users. You may not have permission.');
+      console.error('Failed to fetch users:', error);
     }
   };
 
-  // FETCH STATISTICS (MODERATOR/ADMIN)
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/user/mod/stats', {
+      const token = getToken();
+      if (!token) return;
+
+      const response = await axios.get('http://localhost:5000/api/user/stats', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setStats(response.data.stats);
     } catch (error) {
-      setError('Failed to fetch statistics. You may not have permission.');
+      console.error('Failed to fetch statistics:', error);
     }
   };
 
-  // UPDATE USER ROLE (ADMIN ONLY)
   const updateUserRole = async (userId, newRole) => {
+    setIsUpdatingUser(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
+      if (!token) return;
+
       await axios.put(`http://localhost:5000/api/user/admin/users/${userId}/role`,
         { role: newRole },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
-      fetchUsers(); // Refresh user list
+
+      await refreshAllData();
       alert('User role updated successfully');
     } catch (error) {
+      console.error('❌ Failed to update user role:', error);
       alert('Failed to update user role: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsUpdatingUser(false);
     }
   };
 
-  // DELETE USER (ADMIN ONLY)
   const deleteUser = async (userId) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
+      if (!token) return;
+
       await axios.delete(`http://localhost:5000/api/user/admin/users/${userId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      fetchUsers(); // Refresh user list
+
+      // Refresh all data after deletion
+      await refreshAllData();
+
       alert('User deleted successfully');
     } catch (error) {
       alert('Failed to delete user: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  // CHECK IF USER HAS SPECIFIC PERMISSION
-  const hasPermission = (permission) => {
-    return permissions.includes(permission);
-  };
 
-  // ========================================
-  // LOGOUT HANDLER FUNCTION
-  // ========================================
   const handleLogout = () => {
-    // CLEAR BROWSER STORAGE
-    // Remove all traces of user session from browser
-    localStorage.removeItem('token');  // Remove JWT token
-    localStorage.removeItem('user');   // Remove user data
-
-    // NOTIFY PARENT COMPONENT
-    // Tell App.jsx that user has logged out
-    // This will hide the Home component and show Login/Register forms
-    onLogout();
+    // Use Keycloak logout which handles everything
+    logout();
   };
 
-  // ========================================
-  // CONDITIONAL RENDERING - LOADING STATE
-  // ========================================
-  // If still loading profile data, show loading message
-  // This prevents showing empty content while API call is in progress
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#f5f6fa',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            display: 'inline-block',
-            width: '60px',
-            height: '60px',
-            border: '6px solid #f3f3f3',
-            borderTop: '6px solid #adb5bd',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '24px'
-          }}></div>
-          <h2 style={{
-            margin: '0 0 8px 0',
-            color: '#1e293b',
-            fontSize: '24px',
-            fontWeight: '600'
-          }}>
-            Loading Dashboard...
-          </h2>
-          <p style={{
-            margin: 0,
-            color: '#64748b',
-            fontSize: '16px'
-          }}>
-            Please wait while we fetch your data
-          </p>
-        </div>
-      </div>
-    );
-  }
 
-  // ========================================
-  // MAIN COMPONENT RENDER WITH ENHANCED UI
-  // ========================================
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -237,7 +132,6 @@ const Home = ({ user, onLogout }) => {
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
 
-        {/* HEADER WITH FLAT COLORS */}
         <div style={{
           backgroundColor: '#adb5bd',
           borderRadius: '8px',
@@ -259,26 +153,30 @@ const Home = ({ user, onLogout }) => {
                 fontWeight: '600',
                 color: 'black'
               }}>
-                Welcome back, {user.username}!
+                Welcome back, {userProfile?.username || userProfile?.firstName || 'User'}!
               </h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{
-                  backgroundColor: getRoleColor(user.role),
-                  color: 'white',
-                  padding: '6px 12px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  {user.role}
-                </span>
+                {userRoles.filter(role =>
+                  ['user', 'moderator', 'admin'].includes(role)
+                ).map(role => (
+                  <span key={role} style={{
+                    backgroundColor: getRoleColor(role),
+                    color: 'white',
+                    padding: '6px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {role}
+                  </span>
+                ))}
                 <span style={{
                   fontSize: '14px',
                   opacity: '0.9'
                 }}>
-                  • {permissions.length} permissions
+                  • {getPermissionsFromRoles(userRoles).length} permissions
                 </span>
               </div>
             </div>
@@ -305,21 +203,7 @@ const Home = ({ user, onLogout }) => {
           </div>
         </div>
 
-        {/* ERROR MESSAGE WITH FLAT STYLING */}
-        {error && <div style={{
-          color: '#721c24',
-          backgroundColor: '#f8d7da',
-          border: '1px solid #f5c6cb',
-          borderRadius: '6px',
-          padding: '16px',
-          marginBottom: '24px',
-          fontSize: '14px',
-          fontWeight: '500'
-        }}>
-          {error}
-        </div>}
 
-        {/* NAVIGATION TABS */}
         <div style={{
           display: 'flex',
           gap: '8px',
@@ -335,7 +219,7 @@ const Home = ({ user, onLogout }) => {
             label="Profile"
           />
 
-          {hasPermission('view_stats') && (
+          {hasBackendRole(['moderator', 'admin']) && (
             <TabButton
               active={activeTab === 'stats'}
               onClick={() => {
@@ -346,7 +230,7 @@ const Home = ({ user, onLogout }) => {
             />
           )}
 
-          {hasPermission('manage_users') && (
+          {hasRole('admin') && (
             <TabButton
               active={activeTab === 'users'}
               onClick={() => {
@@ -358,7 +242,6 @@ const Home = ({ user, onLogout }) => {
           )}
         </div>
 
-        {/* TAB CONTENT */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '8px',
@@ -374,7 +257,6 @@ const Home = ({ user, onLogout }) => {
     </div>
   );
 
-  // TAB BUTTON COMPONENT
   function TabButton({ active, onClick, icon, label }) {
     return (
       <button
@@ -414,11 +296,7 @@ const Home = ({ user, onLogout }) => {
     );
   }
 
-  // ========================================
-  // HELPER FUNCTIONS FOR RENDERING
-  // ========================================
-
-  // GET ROLE COLOR FOR BADGE
+  // Helper functions
   function getRoleColor(role) {
     switch (role) {
       case 'admin': return '#dc3545';
@@ -428,24 +306,7 @@ const Home = ({ user, onLogout }) => {
     }
   }
 
-  // RENDER PROFILE TAB WITH ENHANCED DESIGN
   function renderProfileTab() {
-    if (!profile) {
-      return (
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{
-            display: 'inline-block',
-            width: '40px',
-            height: '40px',
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #adb5bd',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <p style={{ marginTop: '16px', color: '#64748b' }}>Loading profile...</p>
-        </div>
-      );
-    }
 
     return (
       <div>
@@ -486,21 +347,33 @@ const Home = ({ user, onLogout }) => {
                 fontWeight: '600',
                 color: 'black'
               }}>
-                {profile.username.charAt(0).toUpperCase()}
+                {(userProfile?.username || userProfile?.firstName || 'U').charAt(0).toUpperCase()}
               </div>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: 'black' }}>{profile.username}</h3>
-              <p style={{ margin: '0 0 16px 0', opacity: '0.9', color: 'black' }}>{profile.email}</p>
-              <span style={{
-                backgroundColor: getRoleColor(profile.role),
-                padding: '8px 16px',
-                borderRadius: '20px',
-                fontSize: '12px',
-                fontWeight: '600',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                {profile.role}
-              </span>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: 'black' }}>
+                {userProfile?.username || userProfile?.fullName || 'User'}
+              </h3>
+              <p style={{ margin: '0 0 16px 0', opacity: '0.9', color: 'black' }}>
+                {userProfile?.email || 'No email'}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', minHeight: '40px' }}>
+                {/* Use roles from Keycloak */}
+                {userRoles.filter(role =>
+                  ['user', 'moderator', 'admin'].includes(role)
+                ).map(role => (
+                  <span key={role} style={{
+                    backgroundColor: getRoleColor(role),
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {role}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -536,7 +409,7 @@ const Home = ({ user, onLogout }) => {
                 padding: '8px 12px',
                 borderRadius: '4px'
               }}>
-                {profile.id}
+                {userProfile?.id || 'Not available'}
               </p>
             </div>
 
@@ -557,11 +430,7 @@ const Home = ({ user, onLogout }) => {
                 fontSize: '14px',
                 color: '#1e293b'
               }}>
-                {new Date(profile.createdAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                Not available
               </p>
             </div>
           </div>
@@ -590,7 +459,7 @@ const Home = ({ user, onLogout }) => {
             flexWrap: 'wrap',
             gap: '8px'
           }}>
-            {permissions.map(permission => (
+            {getPermissionsFromRoles(userRoles).map(permission => (
               <span key={permission} style={{
                 backgroundColor: '#adb5bd',
                 color: 'black',
@@ -600,14 +469,14 @@ const Home = ({ user, onLogout }) => {
                 fontWeight: '600',
                 textTransform: 'capitalize'
               }}>
-                {permission.replace('_', ' ')}
+                {permission}
               </span>
             ))}
           </div>
 
-          {permissions.length === 0 && (
+          {getPermissionsFromRoles(userRoles).length === 0 && (
             <p style={{ color: '#64748b', fontStyle: 'italic', margin: 0 }}>
-              No permissions loaded yet...
+              No permissions available
             </p>
           )}
         </div>
@@ -798,6 +667,7 @@ const Home = ({ user, onLogout }) => {
 
   // RENDER USER MANAGEMENT TAB WITH ENHANCED DESIGN
   function renderUsersTab() {
+
     return (
       <div>
         <div style={{
@@ -847,9 +717,8 @@ const Home = ({ user, onLogout }) => {
             <div style={{ display: 'grid', gap: '16px' }}>
               {users.map(userItem => (
                 <UserCard
-                  key={userItem._id}
+                  key={userItem._id || userItem.id || userItem.email}
                   user={userItem}
-                  currentUserId={profile?.id}
                   onRoleUpdate={updateUserRole}
                   onDelete={deleteUser}
                 />
@@ -862,8 +731,15 @@ const Home = ({ user, onLogout }) => {
   }
 
   // USER CARD COMPONENT
-  function UserCard({ user, currentUserId, onRoleUpdate, onDelete }) {
-    const isCurrentUser = user._id === currentUserId;
+  function UserCard({ user, onRoleUpdate, onDelete }) {
+    // Match by email since IDs are different between Keycloak and database
+    const isCurrentUser = user.email === userProfile?.email;
+
+    // Use Keycloak roles for current user, database role for others
+    const displayRole = isCurrentUser && userRoles.length > 0
+      ? userRoles.find(role => ['user', 'moderator', 'admin'].includes(role)) || user.role
+      : user.role;
+
 
     return (
       <div style={{
@@ -880,7 +756,7 @@ const Home = ({ user, onLogout }) => {
           <div style={{
             width: '56px',
             height: '56px',
-            backgroundColor: getRoleColor(user.role),
+            backgroundColor: getRoleColor(displayRole),
             borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
@@ -925,7 +801,7 @@ const Home = ({ user, onLogout }) => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{
-                backgroundColor: getRoleColor(user.role),
+                backgroundColor: getRoleColor(displayRole),
                 color: 'white',
                 padding: '4px 12px',
                 borderRadius: '4px',
@@ -933,14 +809,18 @@ const Home = ({ user, onLogout }) => {
                 fontWeight: '600',
                 textTransform: 'uppercase'
               }}>
-                {user.role}
+                {displayRole}
               </span>
 
               <span style={{
                 fontSize: '12px',
                 color: '#64748b'
               }}>
-                Joined {new Date(user.createdAt).toLocaleDateString()}
+                Joined {user.createdAt && !isNaN(new Date(user.createdAt))
+                  ? new Date(user.createdAt).toLocaleDateString()
+                  : user.createdTimestamp && !isNaN(new Date(user.createdTimestamp))
+                  ? new Date(user.createdTimestamp).toLocaleDateString()
+                  : 'Unknown Date'}
               </span>
             </div>
           </div>
@@ -950,7 +830,7 @@ const Home = ({ user, onLogout }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* ROLE SELECTOR */}
           <select
-            value={user.role}
+            value={displayRole}
             onChange={(e) => onRoleUpdate(user._id, e.target.value)}
             disabled={isCurrentUser}
             style={{
