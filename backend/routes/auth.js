@@ -1,57 +1,77 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const supabase = require('../config/supabase');
 const router = express.Router();
 
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: '7d',
-  });
-};
-
-router.post('/register', async (req, res) => {
+// Route to sync user data after Supabase auth
+router.post('/sync-user', async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { supabase_id, username, email, role } = req.body;
 
-    if (!username || !email || !password) {
+    console.log('Sync user request:', { supabase_id, username, email, role });
+
+    if (!supabase_id || !username || !email) {
       return res.status(400).json({
-        message: 'All fields are required'
+        message: 'Supabase ID, username, and email are required'
       });
     }
 
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
-    });
+    // Check if user already exists
+    let user = await User.findOne({ supabase_id });
+    console.log('Existing user found:', user ? 'Yes' : 'No');
 
-    if (existingUser) {
-      return res.status(400).json({
-        message: 'User with this email or username already exists'
-      });
+    if (user) {
+      // Update existing user (but keep role if already set)
+      user.username = username;
+      user.email = email;
+      // Only update role if explicitly provided and valid
+      if (role && ['user', 'admin', 'moderator'].includes(role)) {
+        user.role = role;
+      }
+      await user.save();
+      console.log('User updated:', user._id);
+    } else {
+      // Check if user already exists by email (for OAuth users)
+      const existingUserByEmail = await User.findOne({ email });
+
+      if (existingUserByEmail) {
+        // Link existing email user to Supabase
+        existingUserByEmail.supabase_id = supabase_id;
+        existingUserByEmail.username = username; // Update username to avoid conflicts
+        await existingUserByEmail.save();
+        user = existingUserByEmail;
+        console.log('Linked existing email user to Supabase:', user._id);
+      } else {
+        // Create new user profile
+        const validRoles = ['user', 'admin', 'moderator'];
+
+        // Ensure username is unique for OAuth users
+        let finalUsername = username;
+        let counter = 1;
+        while (await User.findOne({ username: finalUsername })) {
+          finalUsername = `${username}${counter}`;
+          counter++;
+        }
+
+        const finalRole = role && validRoles.includes(role) ? role : 'user';
+        console.log('Role assignment:', { received: role, valid: validRoles.includes(role), final: finalRole });
+
+        user = new User({
+          supabase_id,
+          username: finalUsername,
+          email,
+          role: finalRole
+        });
+        await user.save();
+        console.log('New user created:', user._id, 'with role:', user.role);
+      }
     }
-
-    const validRoles = ['user', 'admin', 'moderator'];
-    if (role && !validRoles.includes(role)) {
-      return res.status(400).json({
-        message: 'Invalid role. Allowed roles are: user, admin, moderator'
-      });
-    }
-
-    const user = new User({
-      username,
-      email,
-      password,
-      role: role || 'user'
-    });
-
-    await user.save();
-
-    const token = generateToken(user._id);
 
     res.status(201).json({
-      message: 'User registered successfully',
-      token,
+      message: 'User profile synced successfully',
       user: {
         id: user._id,
+        supabase_id: user.supabase_id,
         username: user.username,
         email: user.email,
         role: user.role
@@ -59,53 +79,7 @@ router.post('/register', async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      message: 'Server error',
-      error: error.message
-    });
-  }
-});
-
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        message: 'Email and password are required'
-      });
-    }
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({
-        message: 'Invalid credentials'
-      });
-    }
-
-    const isPasswordValid = await user.comparePassword(password);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        message: 'Invalid credentials'
-      });
-    }
-
-    const token = generateToken(user._id);
-
-    res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role
-      }
-    });
-
-  } catch (error) {
+    console.error('Sync user error:', error);
     res.status(500).json({
       message: 'Server error',
       error: error.message

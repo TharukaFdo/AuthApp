@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const supabase = require('../config/supabase');
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -13,15 +14,26 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Access token is required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
-    const user = await User.findById(decoded.userId).select('-password');
-
-    if (!user) {
+    if (error || !user) {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    req.user = user;
+    // Get user profile from your MongoDB (for role info)
+    const userProfile = await User.findOne({ supabase_id: user.id }).select('-password');
+
+    if (!userProfile) {
+      return res.status(401).json({ message: 'User profile not found' });
+    }
+
+    // Combine Supabase user data with your profile data
+    req.user = {
+      ...userProfile.toObject(),
+      supabase_user: user
+    };
+
     next();
 
   } catch (error) {
