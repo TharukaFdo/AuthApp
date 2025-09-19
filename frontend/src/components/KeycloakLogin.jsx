@@ -39,31 +39,6 @@ const KeycloakLogin = () => {
             Secure authentication powered by Keycloak
           </p>
         </div>
-
-        <div style={{
-          backgroundColor: '#e7f1ff',
-          border: '1px solid #b3d7ff',
-          borderRadius: '6px',
-          padding: '16px',
-          marginBottom: '32px'
-        }}>
-          <p style={{
-            margin: 0,
-            color: '#0066cc',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}>
-            Single Sign-On (SSO) Authentication
-          </p>
-          <p style={{
-            margin: '8px 0 0 0',
-            color: '#0066cc',
-            fontSize: '12px'
-          }}>
-            Your credentials are managed securely by Keycloak
-          </p>
-        </div>
-
         <div style={{
           display: 'flex',
           flexDirection: 'column',
