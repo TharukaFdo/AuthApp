@@ -1,122 +1,46 @@
-// ========================================
-// LOGIN COMPONENT - User Authentication Form
-// ========================================
-// This React component renders a login form that allows existing users to sign in
-// It handles form validation, API calls, and user feedback
-
-// IMPORT REACT HOOKS AND LIBRARIES
-// useState = React hook for managing component state (data that can change)
-// axios = HTTP client library for making API requests to our backend
 import { useState } from 'react';
 import axios from 'axios';
 
-// ========================================
-// MAIN LOGIN COMPONENT
-// ========================================
-// React component = JavaScript function that returns JSX (HTML-like syntax)
-// Props = data passed from parent component
 const Login = ({ onLogin, switchToRegister }) => {
-  // PROPS EXPLANATION:
-  // onLogin: function to call when login succeeds (passed from App.jsx)
-  // switchToRegister: function to switch to registration form
-
-  // ========================================
-  // COMPONENT STATE MANAGEMENT
-  // ========================================
-  // useState hook manages component's local state (data that can change over time)
-  // Returns [currentValue, functionToUpdateValue]
-
-  // FORM DATA STATE - stores user input
   const [formData, setFormData] = useState({
-    email: '',      // User's email address
-    password: ''    // User's password
+    email: '',
+    password: ''
   });
 
-  // ERROR STATE - stores error messages to display to user
   const [error, setError] = useState('');
-
-  // LOADING STATE - tracks if login request is in progress
-  // Used to disable button and show loading text during API call
   const [loading, setLoading] = useState(false);
 
-  // ========================================
-  // EVENT HANDLER FUNCTIONS
-  // ========================================
-
-  // HANDLE INPUT CHANGES
-  // This function runs every time user types in an input field
   const handleChange = (e) => {
-    // e = event object containing information about what happened
-    // e.target = the specific input element that was changed
-    // e.target.name = the 'name' attribute of the input ("email" or "password")
-    // e.target.value = what the user typed
-
-    // UPDATE FORM DATA STATE
     setFormData({
-      ...formData,  // Spread operator: keeps existing data
-      [e.target.name]: e.target.value  // Update only the changed field
-      // If user typed in email field: { email: "new value", password: "old value" }
+      ...formData,
+      [e.target.name]: e.target.value
     });
 
-    // CLEAR ANY EXISTING ERROR
-    // When user starts typing, hide previous error messages
     setError('');
   };
 
-  // HANDLE FORM SUBMISSION
-  // This function runs when user clicks the "Login" button
   const handleSubmit = async (e) => {
-    // PREVENT DEFAULT FORM BEHAVIOR
-    // By default, forms refresh the page when submitted
-    // preventDefault() stops this and lets us handle it with JavaScript
     e.preventDefault();
 
-    // SET LOADING STATE
-    setLoading(true);  // Show "Logging in..." text and disable button
-    setError('');      // Clear any previous error messages
+    setLoading(true);
+    setError('');
 
     try {
-      // MAKE API REQUEST TO BACKEND
-      // axios.post() sends HTTP POST request with user's login data
-      // URL: http://localhost:5000/api/auth/login
-      // Data: { email: "user@example.com", password: "userpassword" }
       const response = await axios.post('http://localhost:5000/api/auth/login', formData);
 
-      // LOGIN SUCCESSFUL - response.data contains:
-      // - token: JWT authentication token
-      // - user: user information (id, username, email)
-
-      // STORE TOKEN IN BROWSER
-      // localStorage = browser storage that persists even after page refresh
-      // We store the JWT token so user stays logged in
       localStorage.setItem('token', response.data.token);
-      
-      // STORE USER DATA IN BROWSER
-      // Convert user object to JSON string for storage
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      // NOTIFY PARENT COMPONENT OF SUCCESSFUL LOGIN
-      // Calls the onLogin function passed from App.jsx
-      // This will update the app's state and redirect to home page
       onLogin(response.data.user);
 
     } catch (error) {
-      // LOGIN FAILED - handle errors
-      // error.response?.data?.message gets error message from backend
-      // ?. = optional chaining (safe navigation - won't crash if property doesn't exist)
-      // || = logical OR (use backup message if backend message doesn't exist)
       setError(error.response?.data?.message || 'Login failed');
-      
+
     } finally {
-      // CLEANUP - runs whether login succeeded or failed
-      // Stop showing loading state
       setLoading(false);
     }
   };
 
-  // ========================================
-  // COMPONENT RENDER WITH ENHANCED UI
-  // ========================================
   return (
     <div style={{
       position: 'fixed',
@@ -143,7 +67,6 @@ const Login = ({ onLogin, switchToRegister }) => {
         boxSizing: 'border-box'
       }}>
 
-        {/* HEADER */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h2 style={{
             margin: '0 0 8px 0',
@@ -162,7 +85,6 @@ const Login = ({ onLogin, switchToRegister }) => {
           </p>
         </div>
 
-        {/* ERROR DISPLAY */}
         {error && (
           <div style={{
             backgroundColor: '#f8d7da',
@@ -177,10 +99,8 @@ const Login = ({ onLogin, switchToRegister }) => {
           </div>
         )}
 
-        {/* LOGIN FORM */}
         <form onSubmit={handleSubmit}>
 
-          {/* EMAIL FIELD */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
@@ -219,7 +139,6 @@ const Login = ({ onLogin, switchToRegister }) => {
             />
           </div>
 
-          {/* PASSWORD FIELD */}
           <div style={{ marginBottom: '32px' }}>
             <label style={{
               display: 'block',
@@ -258,7 +177,6 @@ const Login = ({ onLogin, switchToRegister }) => {
             />
           </div>
 
-          {/* SUBMIT BUTTON */}
           <button
             type="submit"
             disabled={loading}
@@ -303,7 +221,6 @@ const Login = ({ onLogin, switchToRegister }) => {
           </button>
         </form>
 
-        {/* SWITCH TO REGISTER */}
         <div style={{
           textAlign: 'center',
           marginTop: '32px',
@@ -347,7 +264,4 @@ const Login = ({ onLogin, switchToRegister }) => {
   );
 };
 
-// EXPORT COMPONENT
-// Makes this component available for import in other files
-// App.jsx can now import and use this Login component
 export default Login;

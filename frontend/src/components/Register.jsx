@@ -1,128 +1,64 @@
-// ========================================
-// REGISTER COMPONENT - New User Registration Form
-// ========================================
-// This React component renders a registration form for creating new user accounts
-// It includes form validation, password confirmation, and API communication
+import { useState } from 'react';
+import axios from 'axios';
 
-// IMPORT REACT HOOKS AND LIBRARIES
-import { useState } from 'react'; // React hook for state management
-import axios from 'axios';         // HTTP client for API requests
-
-// ========================================
-// MAIN REGISTER COMPONENT
-// ========================================
 const Register = ({ onLogin, switchToLogin }) => {
-  // PROPS EXPLANATION:
-  // onLogin: function to call when registration succeeds (from App.jsx)
-  // switchToLogin: function to switch back to login form
-
-  // ========================================
-  // COMPONENT STATE MANAGEMENT
-  // ========================================
-  
-  // FORM DATA STATE - stores all user input
-  // Notice this has more fields than Login component
   const [formData, setFormData] = useState({
-    username: '',        // User's chosen username
-    email: '',          // User's email address
-    password: '',       // User's password
-    confirmPassword: '', // Password confirmation for validation
-    role: 'user'        // User's role - defaults to 'user'
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'user'
   });
 
-  // ERROR STATE - stores validation and server error messages
   const [error, setError] = useState('');
-
-  // LOADING STATE - tracks registration request progress
   const [loading, setLoading] = useState(false);
 
-  // ========================================
-  // EVENT HANDLER FUNCTIONS
-  // ========================================
-
-  // HANDLE INPUT CHANGES
-  // Same logic as Login component but handles more fields
   const handleChange = (e) => {
     setFormData({
-      ...formData,                    // Keep existing form data
-      [e.target.name]: e.target.value // Update the specific field that changed
+      ...formData,
+      [e.target.name]: e.target.value
     });
-    
-    // Clear error when user starts typing (improves user experience)
+
     setError('');
   };
 
-  // HANDLE FORM SUBMISSION WITH VALIDATION
   const handleSubmit = async (e) => {
-    // Prevent default form submission behavior
     e.preventDefault();
-    
-    // ========================================
-    // CLIENT-SIDE VALIDATION
-    // ========================================
-    // Validate form data BEFORE sending to server
-    // This provides immediate feedback and reduces server load
 
-    // PASSWORD MATCH VALIDATION
-    // Check if password and confirmPassword fields match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
-      return; // Stop execution if validation fails
+      return;
     }
 
-    // PASSWORD LENGTH VALIDATION
-    // Ensure password meets minimum security requirements
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
-      return; // Stop execution if validation fails
+      return;
     }
 
-    // If we reach here, validation passed
-    setLoading(true); // Show loading state
-    setError('');     // Clear any previous errors
+    setLoading(true);
+    setError('');
 
     try {
-      // ========================================
-      // API REQUEST TO REGISTER NEW USER
-      // ========================================
-      
-      // Send registration data to backend
-      // Note: We don't send confirmPassword to server (only used for client validation)
       const response = await axios.post('http://localhost:5000/api/auth/register', {
-        username: formData.username,  // Send only the fields the server needs
+        username: formData.username,
         email: formData.email,
         password: formData.password,
-        role: formData.role          // Include selected role
-        // confirmPassword is NOT sent - it's only for frontend validation
+        role: formData.role
       });
 
-      // REGISTRATION SUCCESSFUL
-      // Server returns same format as login: { token, user }
-      
-      // Store authentication token in browser
       localStorage.setItem('token', response.data.token);
-      
-      // Store user data in browser
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      // Notify parent component (App.jsx) that user is now logged in
-      // This will automatically redirect to home page
       onLogin(response.data.user);
 
     } catch (error) {
-      // REGISTRATION FAILED
-      // Handle server errors (like "email already exists")
       setError(error.response?.data?.message || 'Registration failed');
-      
+
     } finally {
-      // CLEANUP - runs whether registration succeeded or failed
       setLoading(false);
     }
   };
 
-  // ========================================
-  // COMPONENT RENDER WITH ENHANCED UI
-  // ========================================
   return (
     <div style={{
       position: 'fixed',
@@ -152,7 +88,6 @@ const Register = ({ onLogin, switchToLogin }) => {
         marginBottom: 'auto'
       }}>
 
-        {/* HEADER */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h2 style={{
             margin: '0 0 8px 0',
@@ -171,7 +106,6 @@ const Register = ({ onLogin, switchToLogin }) => {
           </p>
         </div>
 
-        {/* ERROR DISPLAY */}
         {error && (
           <div style={{
             backgroundColor: '#f8d7da',
@@ -186,10 +120,8 @@ const Register = ({ onLogin, switchToLogin }) => {
           </div>
         )}
 
-        {/* REGISTRATION FORM */}
         <form onSubmit={handleSubmit}>
         
-          {/* USERNAME FIELD */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
@@ -228,7 +160,6 @@ const Register = ({ onLogin, switchToLogin }) => {
             />
           </div>
 
-          {/* EMAIL FIELD */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
@@ -267,7 +198,6 @@ const Register = ({ onLogin, switchToLogin }) => {
             />
           </div>
 
-          {/* PASSWORD FIELD */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
@@ -306,7 +236,6 @@ const Register = ({ onLogin, switchToLogin }) => {
             />
           </div>
 
-          {/* CONFIRM PASSWORD FIELD */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
@@ -345,7 +274,6 @@ const Register = ({ onLogin, switchToLogin }) => {
             />
           </div>
 
-          {/* ROLE SELECTION FIELD */}
           <div style={{ marginBottom: '32px' }}>
             <label style={{
               display: 'block',
@@ -394,7 +322,6 @@ const Register = ({ onLogin, switchToLogin }) => {
             </small>
           </div>
 
-          {/* SUBMIT BUTTON */}
           <button
             type="submit"
             disabled={loading}
@@ -439,7 +366,6 @@ const Register = ({ onLogin, switchToLogin }) => {
           </button>
         </form>
 
-        {/* SWITCH TO LOGIN */}
         <div style={{
           textAlign: 'center',
           marginTop: '32px',
@@ -483,5 +409,4 @@ const Register = ({ onLogin, switchToLogin }) => {
   );
 };
 
-// EXPORT COMPONENT
 export default Register;
