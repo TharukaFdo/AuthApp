@@ -1,7 +1,22 @@
+import { useState } from 'react';
 import { getRoleColor } from '../utils/roleUtils';
+import PhoneLinking from './PhoneLinking';
 
 const UserProfile = ({ profile, permissions }) => {
-  if (!profile) {
+  const [showPhoneLinking, setShowPhoneLinking] = useState(false);
+  const [userProfile, setUserProfile] = useState(profile);
+
+  const handlePhoneLinked = (phone) => {
+    // Update the profile with the new phone
+    setUserProfile({
+      ...userProfile,
+      phone: phone,
+      phone_verified: true
+    });
+    setShowPhoneLinking(false);
+  };
+
+  if (!userProfile) {
     return (
       <div style={{ textAlign: 'center', padding: '40px' }}>
         <div style={{
@@ -35,9 +50,16 @@ const UserProfile = ({ profile, permissions }) => {
         gap: '24px',
         marginBottom: '32px'
       }}>
-        <UserInfoCard profile={profile} />
-        <AccountDetailsCard profile={profile} />
+        <UserInfoCard profile={userProfile} />
+        <AccountDetailsCard profile={userProfile} />
       </div>
+
+      <PhoneManagementSection
+        profile={userProfile}
+        showPhoneLinking={showPhoneLinking}
+        setShowPhoneLinking={setShowPhoneLinking}
+        onPhoneLinked={handlePhoneLinked}
+      />
 
       <PermissionsSection permissions={permissions} />
     </div>
@@ -149,6 +171,126 @@ const AccountDetailsCard = ({ profile }) => (
         })}
       </p>
     </div>
+  </div>
+);
+
+const PhoneManagementSection = ({ profile, showPhoneLinking, setShowPhoneLinking, onPhoneLinked }) => (
+  <div style={{
+    backgroundColor: '#f8f9fa',
+    padding: '24px',
+    borderRadius: '8px',
+    border: '1px solid #e9ecef',
+    marginBottom: '32px'
+  }}>
+    <h3 style={{
+      margin: '0 0 20px 0',
+      fontSize: '18px',
+      color: '#1e293b'
+    }}>
+      Phone Number Management
+    </h3>
+
+    {profile.phone ? (
+      <div>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          <span style={{
+            fontSize: '16px',
+            color: '#1e293b',
+            fontWeight: '500'
+          }}>
+            {profile.phone}
+          </span>
+          <span style={{
+            backgroundColor: profile.phone_verified ? '#28a745' : '#ffc107',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontWeight: '600'
+          }}>
+            {profile.phone_verified ? 'Verified' : 'Unverified'}
+          </span>
+        </div>
+        <p style={{
+          color: '#64748b',
+          fontSize: '14px',
+          margin: '0 0 16px 0'
+        }}>
+          Your phone number is linked to your account and stored in the primary phone field.
+        </p>
+        {!profile.phone_verified && (
+          <button
+            onClick={() => setShowPhoneLinking(true)}
+            style={{
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            Verify Phone Number
+          </button>
+        )}
+      </div>
+    ) : (
+      <div>
+        <p style={{
+          color: '#64748b',
+          fontSize: '14px',
+          margin: '0 0 16px 0'
+        }}>
+          No phone number linked to your account. Link a phone number to enable SMS features and add it as a primary authentication method.
+        </p>
+        <button
+          onClick={() => setShowPhoneLinking(true)}
+          style={{
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '6px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer'
+          }}
+        >
+          Link Phone Number
+        </button>
+      </div>
+    )}
+
+    {showPhoneLinking && (
+      <div style={{ marginTop: '24px' }}>
+        <PhoneLinking
+          user={profile}
+          onPhoneLinked={onPhoneLinked}
+        />
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <button
+            onClick={() => setShowPhoneLinking(false)}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#6c757d',
+              border: '1px solid #ced4da',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
   </div>
 );
 

@@ -9,8 +9,11 @@ router.get('/profile', authenticateToken, async (req, res) => {
       message: 'Profile data retrieved successfully',
       user: {
         id: req.user._id,
+        supabase_id: req.user.supabase_id,
         username: req.user.username,
         email: req.user.email,
+        phone: req.user.phone,
+        phone_verified: req.user.phone_verified,
         role: req.user.role,
         createdAt: req.user.createdAt
       }

@@ -10,22 +10,25 @@ const Register = ({ onLogin, switchToLogin }) => {
     confirmPassword: '',
     role: 'user'
   });
-
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
 
+    // Clear any existing errors
     setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate inputs
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -40,50 +43,67 @@ const Register = ({ onLogin, switchToLogin }) => {
     setError('');
 
     try {
-      // Sign up with Supabase
+      console.log('Creating user account...');
+
+      // Create account with email and password
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          emailRedirectTo: undefined, // Disable email confirmation
+          data: {
+            username: formData.username,
+            display_name: formData.username,
+            full_name: formData.username,
+            role: formData.role
+          }
+        }
       });
 
       if (authError) {
-        setError(authError.message);
-        return;
+        if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
+          throw new Error('An account with this email already exists. Please try logging in instead.');
+        }
+        throw new Error(authError.message);
       }
 
       if (!authData.user) {
-        setError('Registration failed');
-        return;
+        throw new Error('Registration failed');
       }
 
-      // Check if user has session (auto-confirmed) or needs email confirmation
-      if (authData.session) {
-        // User is auto-confirmed, sync immediately
-        const token = authData.session.access_token;
+      console.log('User account created successfully:', authData.user.id);
 
-        const response = await axios.post('http://localhost:5000/api/auth/sync-user', {
-          supabase_id: authData.user.id,
-          username: formData.username,
-          email: formData.email,
-          role: formData.role
-        });
+      // Sync user to MongoDB
+      const syncPayload = {
+        supabase_id: authData.user.id,
+        username: formData.username,
+        email: formData.email,
+        role: formData.role
+      };
 
+      console.log('Syncing user data:', syncPayload);
+      const response = await axios.post('http://localhost:5000/api/auth/sync-user', syncPayload);
+
+      // Store session token
+      const token = authData.session?.access_token;
+      if (token) {
         localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        onLogin(response.data.user);
-
-      } else {
-        // User needs email confirmation
-        setError('Registration successful! Please check your email to confirm your account, then try logging in.');
       }
+
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      onLogin(response.data.user);
 
     } catch (error) {
-      setError(error.response?.data?.message || error.message || 'Registration failed');
-
+      console.error('Registration error:', error);
+      setError(error.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
+
+
+
+
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -164,7 +184,7 @@ const Register = ({ onLogin, switchToLogin }) => {
             marginBottom: '24px',
             fontSize: '14px'
           }}>
-            {error}
+{error}
           </div>
         )}
 
@@ -245,6 +265,7 @@ const Register = ({ onLogin, switchToLogin }) => {
               placeholder="Enter your email"
             />
           </div>
+
 
           <div style={{ marginBottom: '20px' }}>
             <label style={{
@@ -418,17 +439,17 @@ const Register = ({ onLogin, switchToLogin }) => {
           textAlign: 'center',
           marginTop: '24px'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            margin: '20px 0',
-            fontSize: '14px',
-            color: '#6c757d'
-          }}>
-            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
-            <span style={{ padding: '0 16px' }}>or</span>
-            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
-          </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              margin: '20px 0',
+              fontSize: '14px',
+              color: '#6c757d'
+            }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
+              <span style={{ padding: '0 16px' }}>or</span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
+            </div>
 
           <button
             onClick={handleGoogleLogin}
@@ -470,7 +491,7 @@ const Register = ({ onLogin, switchToLogin }) => {
             </svg>
             {loading ? 'Creating account...' : 'Continue with Google'}
           </button>
-        </div>
+          </div>
 
         <div style={{
           textAlign: 'center',
